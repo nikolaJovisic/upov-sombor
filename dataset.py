@@ -58,6 +58,8 @@ def load():
         new_columns.append(c)
         steping_index += 1
 
+    print(*new_columns, sep='\n')
+
     df.drop(index=0, inplace=True)
     col_name_dict = {
         old_name: new_name for old_name, new_name in zip(df.columns, new_columns)
