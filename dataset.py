@@ -27,8 +27,6 @@ OUTPUT_COLUMNS = [
     "P_(mg/l)_izlaz",
     "Susp.materije_(mg/l)_izlaz",
 ]
-
-
 def load():
     df = pd.read_csv("data.csv")
 
@@ -82,7 +80,11 @@ def preprocess(df: pd.DataFrame):
         return element
 
     df = df.applymap(format_strings)
+
+    df = df.loc[:, [*INPUT_COLUMNS, *OUTPUT_COLUMNS]]
     df = df[~(df == 0).any(axis=1)]
+
+    corr_matrix = df.corr()
 
     scaler = StandardScaler()
 
