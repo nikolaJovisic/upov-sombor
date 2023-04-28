@@ -8,9 +8,6 @@ from torch.utils.data import Dataset
 
 INPUT_COLUMNS = [
     "Temperatura_(C˚)_ulaz",
-    "Temperatura_(C˚)_dubinska",
-    "Temperatura_(C˚)_površinska",
-    "Temperatura_(C˚)_izlaz",
     "pH_ulaz",
     "HPK_(mg/l)_ulaz",
     "HRT",

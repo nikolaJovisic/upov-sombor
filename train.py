@@ -3,6 +3,7 @@ import torch
 import torch.optim as optim
 from sklearn.metrics import r2_score
 from torch import nn
+from torch.optim.lr_scheduler import ExponentialLR
 from torch.utils.data import DataLoader, random_split
 
 from dataset import INPUT_COLUMNS, OUTPUT_COLUMNS, WaterDataset
@@ -23,14 +24,13 @@ validation_loader = DataLoader(
 
 input_dim = len(INPUT_COLUMNS)
 output_dim = len(OUTPUT_COLUMNS)
-hidden_dim = 150
 
-model = WaterNet(input_dim, hidden_dim, output_dim)
+model = WaterNet(input_dim, output_dim)
 
 
 criterion = nn.MSELoss()
-optimizer = optim.Adam(model.parameters(), lr=0.1)
-
+optimizer = optim.SGD(model.parameters(), lr=0.0001)
+scheduler = ExponentialLR(optimizer, gamma=0.99)
 best_validation_loss = np.inf
 
 train_loss_history = []
@@ -54,7 +54,9 @@ for epoch in range(5000):
         train_outputs.append(outputs)
         train_labels.append(labels)
 
+    scheduler.step()
     train_loss /= len(train_loader)
+
     with torch.no_grad():
         train_outputs = torch.cat(train_outputs).numpy()
         train_labels = torch.cat(train_labels).numpy()
