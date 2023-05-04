@@ -10,17 +10,15 @@ INPUT_COLUMNS = [
     "Temperatura_(C˚)_ulaz",
     "pH_ulaz",
     "HPK_(mg/l)_ulaz",
-    "HRT",
-    "O2_(mg/l)_dubinska",
-    "O2_(mg/l)_površinska",
     "BPK5_(mg/l)_ulaz",
     "N_(mg/l)_ulaz",
     "P_(mg/l)_ulaz",
     "Susp.materije_(mg/l)_ulaz",
+    "Q_(m3/dan)_protok",
+    "HRT",
 ]
 
 OUTPUT_COLUMNS = [
-    "pH_izlaz",
     "HPK_(mg/l)_izlaz",
     "BPK5_(mg/l)_izlaz",
     "N_(mg/l)_izlaz",
@@ -62,7 +60,6 @@ def load():
     df = df.rename(columns=col_name_dict)
     return df
 
-
 def preprocess(df: pd.DataFrame):
     df.drop(columns=["Datum"], inplace=True)
     df.dropna(subset=INPUT_COLUMNS, inplace=True)
@@ -85,13 +82,12 @@ def preprocess(df: pd.DataFrame):
     df = df[~(df == 0).any(axis=1)]
 
     corr_matrix = df.corr()
+    print(corr_matrix)
 
     scaler = StandardScaler()
-
     df[INPUT_COLUMNS] = scaler.fit_transform(df[INPUT_COLUMNS])
 
     return df
-
 
 class WaterDataset(Dataset):
     def __init__(self, transform=None, target_transform=None):
