@@ -3,6 +3,7 @@ import re
 import numpy as np
 import pandas as pd
 import torch
+from matplotlib import pyplot as plt
 from sklearn.preprocessing import StandardScaler
 from torch.utils.data import Dataset
 
@@ -14,17 +15,19 @@ INPUT_COLUMNS = [
     "N_(mg/l)_ulaz",
     "P_(mg/l)_ulaz",
     "Susp.materije_(mg/l)_ulaz",
-    "Q_(m3/dan)_protok",
-    "HRT",
+    # "Q_(m3/dan)_protok",
+    # "HRT",
 ]
 
 OUTPUT_COLUMNS = [
-    "HPK_(mg/l)_izlaz",
+    # "HPK_(mg/l)_izlaz",
     "BPK5_(mg/l)_izlaz",
-    "N_(mg/l)_izlaz",
-    "P_(mg/l)_izlaz",
-    "Susp.materije_(mg/l)_izlaz",
+    # "N_(mg/l)_izlaz",
+    # "P_(mg/l)_izlaz",
+    # "Susp.materije_(mg/l)_izlaz",
 ]
+
+HISTORY_DAYS = 10
 def load():
     df = pd.read_csv("data.csv")
 
@@ -61,7 +64,7 @@ def load():
     return df
 
 def preprocess(df: pd.DataFrame):
-    df.drop(columns=["Datum"], inplace=True)
+    # df.drop(columns=["Datum"], inplace=True)
     df.dropna(subset=INPUT_COLUMNS, inplace=True)
     df.dropna(subset=OUTPUT_COLUMNS, inplace=True)
 
@@ -81,11 +84,30 @@ def preprocess(df: pd.DataFrame):
     df = df.loc[:, [*INPUT_COLUMNS, *OUTPUT_COLUMNS]]
     df = df[~(df == 0).any(axis=1)]
 
-    corr_matrix = df.corr()
-    print(corr_matrix)
+    df = df[df[OUTPUT_COLUMNS[0]] < 400]
+
+    # plt.plot(df[OUTPUT_COLUMNS[0]])
+    # plt.xlabel('merenja')
+    # plt.ylabel(OUTPUT_COLUMNS[0])
+    # plt.show()
+
+    # log_cols = [f'{i}_ln' for i in INPUT_COLUMNS]
+    # df[log_cols] = np.log(df[INPUT_COLUMNS].values)
+    # INPUT_COLUMNS.extend(log_cols)
+
+
+    for i in range(1, HISTORY_DAYS + 1):
+        shifted_col_name = f'{"BPK5_(mg/l)_izlaz"}_{i}'
+        INPUT_COLUMNS.append(shifted_col_name)
+        df[shifted_col_name] = df["BPK5_(mg/l)_izlaz"].shift(i)
+
+    df = df.drop(df.index[:HISTORY_DAYS])
 
     scaler = StandardScaler()
     df[INPUT_COLUMNS] = scaler.fit_transform(df[INPUT_COLUMNS])
+
+    corr_matrix = df.corr()
+    print(corr_matrix)
 
     return df
 
