@@ -7,7 +7,7 @@ from torch._dynamo.utils import rmse
 from torch.optim.lr_scheduler import ExponentialLR
 from torch.utils.data import DataLoader, random_split
 
-from dataset import INPUT_COLUMNS, OUTPUT_COLUMNS, WaterDataset
+from dataset import FEATURE_COLUMNS, OUTPUT_COLUMNS, HISTORY_DAYS, WaterDataset
 from model import WaterNet
 
 dataset = WaterDataset()
@@ -23,14 +23,16 @@ validation_loader = DataLoader(
     validation_set, batch_size=batch_size, shuffle=True, drop_last=True
 )
 
-input_dim = len(INPUT_COLUMNS)
-output_dim = len(OUTPUT_COLUMNS)
+feature_size = len(FEATURE_COLUMNS)
+lstm_input_size = HISTORY_DAYS
+output_size = len(OUTPUT_COLUMNS)
 
-model = WaterNet(input_dim, output_dim)
-
+model = WaterNet(
+    features_size=feature_size, lstm_input_size=output_size, output_size=output_size
+)
 
 criterion = nn.MSELoss()
-optimizer = optim.SGD(model.parameters(), lr=0.0001)
+optimizer = optim.Adam(model.parameters(), lr=0.0001)
 scheduler = ExponentialLR(optimizer, gamma=0.99)
 best_validation_loss = np.inf
 
@@ -45,9 +47,9 @@ for epoch in range(5000):
     train_outputs = []
     train_labels = []
     for data in train_loader:
-        inputs, labels = data
+        features, lstm_input, labels = data
         optimizer.zero_grad()
-        outputs = model(inputs)
+        outputs = model(features, lstm_input)
         loss = criterion(outputs, labels)
         loss.backward()
         optimizer.step()
@@ -69,8 +71,8 @@ for epoch in range(5000):
     validation_labels = []
     with torch.no_grad():
         for data in validation_loader:
-            inputs, labels = data
-            outputs = model(inputs)
+            features, lstm_input, labels = data
+            outputs = model(features, lstm_input)
             validation_loss += criterion(outputs, labels).item()
             validation_outputs.append(outputs)
             validation_labels.append(labels)
@@ -80,7 +82,7 @@ for epoch in range(5000):
         validation_outputs = torch.cat(validation_outputs)
         validation_labels = torch.cat(validation_labels)
         validation_r2 = r2_score(validation_labels.numpy(), validation_outputs.numpy())
-        if epoch%10 == 0:
+        if epoch % 10 == 0:
             stacked = np.squeeze(np.stack((validation_labels, validation_outputs)))
 
         validation_rmse = rmse(validation_labels, validation_outputs)

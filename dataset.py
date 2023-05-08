@@ -7,7 +7,7 @@ from matplotlib import pyplot as plt
 from sklearn.preprocessing import StandardScaler
 from torch.utils.data import Dataset
 
-INPUT_COLUMNS = [
+FEATURE_COLUMNS = [
     "Temperatura_(C˚)_ulaz",
     "pH_ulaz",
     "HPK_(mg/l)_ulaz",
@@ -27,7 +27,11 @@ OUTPUT_COLUMNS = [
     # "Susp.materije_(mg/l)_izlaz",
 ]
 
+LSTM_COLUMNS = []
+
 HISTORY_DAYS = 10
+
+
 def load():
     df = pd.read_csv("data.csv")
 
@@ -54,7 +58,7 @@ def load():
         new_columns.append(c)
         steping_index += 1
 
-    print(*new_columns, sep='\n')
+    print(*new_columns, sep="\n")
 
     df.drop(index=0, inplace=True)
     col_name_dict = {
@@ -63,9 +67,10 @@ def load():
     df = df.rename(columns=col_name_dict)
     return df
 
+
 def preprocess(df: pd.DataFrame):
     # df.drop(columns=["Datum"], inplace=True)
-    df.dropna(subset=INPUT_COLUMNS, inplace=True)
+    df.dropna(subset=FEATURE_COLUMNS, inplace=True)
     df.dropna(subset=OUTPUT_COLUMNS, inplace=True)
 
     def format_strings(element):
@@ -81,7 +86,7 @@ def preprocess(df: pd.DataFrame):
 
     df = df.applymap(format_strings)
 
-    df = df.loc[:, [*INPUT_COLUMNS, *OUTPUT_COLUMNS]]
+    df = df.loc[:, [*FEATURE_COLUMNS, *OUTPUT_COLUMNS]]
     df = df[~(df == 0).any(axis=1)]
 
     df = df[df[OUTPUT_COLUMNS[0]] < 400]
@@ -96,27 +101,26 @@ def preprocess(df: pd.DataFrame):
     # INPUT_COLUMNS.extend(log_cols)
 
 
+    scaler = StandardScaler()
+    df[FEATURE_COLUMNS] = scaler.fit_transform(df[FEATURE_COLUMNS])
+
     for i in range(1, HISTORY_DAYS + 1):
         shifted_col_name = f'{"BPK5_(mg/l)_izlaz"}_{i}'
-        INPUT_COLUMNS.append(shifted_col_name)
+        LSTM_COLUMNS.append(shifted_col_name)
         df[shifted_col_name] = df["BPK5_(mg/l)_izlaz"].shift(i)
 
     df = df.drop(df.index[:HISTORY_DAYS])
-
-    scaler = StandardScaler()
-    df[INPUT_COLUMNS] = scaler.fit_transform(df[INPUT_COLUMNS])
 
     corr_matrix = df.corr()
     print(corr_matrix)
 
     return df
 
+
 class WaterDataset(Dataset):
-    def __init__(self, transform=None, target_transform=None):
+    def __init__(self):
         data = load()
         self.df = preprocess(data)
-        self.transform = transform
-        self.target_transform = target_transform
 
     def __len__(self):
         return len(self.df)
@@ -124,13 +128,12 @@ class WaterDataset(Dataset):
     def __getitem__(self, index):
         row = self.df.iloc[index]
 
-        input_vector = row[INPUT_COLUMNS].to_numpy(dtype=np.float32)
-        output_vector = row[OUTPUT_COLUMNS].to_numpy(dtype=np.float32)
+        features_vector = row[FEATURE_COLUMNS].to_numpy(dtype=np.float32)
+        lstm_vector = np.expand_dims(row[LSTM_COLUMNS].to_numpy(dtype=np.float32), axis=-1)
+        outputs_vector = row[OUTPUT_COLUMNS].to_numpy(dtype=np.float32)
 
-        if self.target_transform:
-            input_vector = self.target_transform(input_vector)
-
-        if self.transform:
-            output_vector = self.transform(output_vector)
-
-        return torch.from_numpy(input_vector), torch.from_numpy(output_vector)
+        return (
+            torch.from_numpy(features_vector),
+            torch.from_numpy(lstm_vector),
+            torch.from_numpy(outputs_vector),
+        )
