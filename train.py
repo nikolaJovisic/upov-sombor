@@ -7,7 +7,7 @@ from torch._dynamo.utils import rmse
 from torch.optim.lr_scheduler import ExponentialLR
 from torch.utils.data import DataLoader, random_split
 
-from dataset import FEATURE_COLUMNS, OUTPUT_COLUMNS, HISTORY_DAYS, WaterDataset
+from dataset import FEATURE_COLUMNS, OUTPUT_COLUMNS, SEQUENCE_LENGTH, WaterDataset
 from model import WaterNet
 
 dataset = WaterDataset()
@@ -24,7 +24,6 @@ validation_loader = DataLoader(
 )
 
 feature_size = len(FEATURE_COLUMNS)
-lstm_input_size = HISTORY_DAYS
 output_size = len(OUTPUT_COLUMNS)
 
 model = WaterNet(

@@ -20,8 +20,8 @@ FEATURE_COLUMNS = [
 ]
 
 OUTPUT_COLUMNS = [
-    # "HPK_(mg/l)_izlaz",
-    "BPK5_(mg/l)_izlaz",
+    "HPK_(mg/l)_izlaz",
+    # "BPK5_(mg/l)_izlaz",
     # "N_(mg/l)_izlaz",
     # "P_(mg/l)_izlaz",
     # "Susp.materije_(mg/l)_izlaz",
@@ -29,7 +29,7 @@ OUTPUT_COLUMNS = [
 
 LSTM_COLUMNS = []
 
-HISTORY_DAYS = 10
+SEQUENCE_LENGTH = 5
 
 
 def load():
@@ -70,8 +70,19 @@ def load():
 
 def preprocess(df: pd.DataFrame):
     # df.drop(columns=["Datum"], inplace=True)
+    df.dropna(subset=['Datum'], inplace=True)
+    df = df[~df['Datum'].str.endswith('(2)')]
     df.dropna(subset=FEATURE_COLUMNS, inplace=True)
     df.dropna(subset=OUTPUT_COLUMNS, inplace=True)
+
+    def format_date(date: str) -> str:
+        date = date.replace('/', '.')
+        date = date.replace(',', '.')
+        return date.strip('.')
+
+    df = df.applymap(lambda x: format_date(x) if isinstance(x, str) else x)
+    df['Datum'] = pd.to_datetime(df['Datum'], format='%d.%m.%Y')
+    df.set_index('Datum', inplace=True)
 
     def format_strings(element):
         if not isinstance(element, str):
@@ -89,27 +100,31 @@ def preprocess(df: pd.DataFrame):
     df = df.loc[:, [*FEATURE_COLUMNS, *OUTPUT_COLUMNS]]
     df = df[~(df == 0).any(axis=1)]
 
-    df = df[df[OUTPUT_COLUMNS[0]] < 400]
+    df = df[df[OUTPUT_COLUMNS[0]] < 300]
+
+
+
+    # log_cols = [f'{i}_ln' for i in INPUT_COLUMNS]
+    # df[log_cols] = np.log(df[INPUT_COLUMNS].values)
+    # INPUT_COLUMNS.extend(log_cols)
+    df = df.groupby('Datum').mean().asfreq('D').interpolate(method='time')
 
     # plt.plot(df[OUTPUT_COLUMNS[0]])
     # plt.xlabel('merenja')
     # plt.ylabel(OUTPUT_COLUMNS[0])
     # plt.show()
 
-    # log_cols = [f'{i}_ln' for i in INPUT_COLUMNS]
-    # df[log_cols] = np.log(df[INPUT_COLUMNS].values)
-    # INPUT_COLUMNS.extend(log_cols)
-
-
     scaler = StandardScaler()
     df[FEATURE_COLUMNS] = scaler.fit_transform(df[FEATURE_COLUMNS])
 
-    for i in range(1, HISTORY_DAYS + 1):
-        shifted_col_name = f'{"BPK5_(mg/l)_izlaz"}_{i}'
-        LSTM_COLUMNS.append(shifted_col_name)
-        df[shifted_col_name] = df["BPK5_(mg/l)_izlaz"].shift(i)
 
-    df = df.drop(df.index[:HISTORY_DAYS])
+
+    for i in range(1, SEQUENCE_LENGTH + 1):
+        shifted_col_name = f'{OUTPUT_COLUMNS[0]}_{i}'
+        LSTM_COLUMNS.append(shifted_col_name)
+        df[shifted_col_name] = df[OUTPUT_COLUMNS[0]].shift(i)
+
+    df = df.drop(df.index[:SEQUENCE_LENGTH])
 
     corr_matrix = df.corr()
     print(corr_matrix)
