@@ -7,10 +7,12 @@ from torch._dynamo.utils import rmse
 from torch.optim.lr_scheduler import ExponentialLR
 from torch.utils.data import DataLoader, random_split
 
-from dataset import FEATURE_COLUMNS, OUTPUT_COLUMNS, SEQUENCE_LENGTH, WaterDataset
+from dataset import FEATURE_COLUMNS, OUTPUT_COLUMNS, WaterDataset
 from model import WaterNet
 
-dataset = WaterDataset()
+use_lstm = False
+
+dataset = WaterDataset(use_lstm=use_lstm)
 
 train_set, validation_set, test_set = random_split(dataset, lengths=(0.7, 0.2, 0.1))
 
@@ -27,7 +29,10 @@ feature_size = len(FEATURE_COLUMNS)
 output_size = len(OUTPUT_COLUMNS)
 
 model = WaterNet(
-    features_size=feature_size, lstm_input_size=output_size, output_size=output_size
+    features_size=feature_size,
+    lstm_input_size=output_size,
+    output_size=output_size,
+    use_lstm=use_lstm,
 )
 
 criterion = nn.MSELoss()
@@ -46,9 +51,9 @@ for epoch in range(5000):
     train_outputs = []
     train_labels = []
     for data in train_loader:
-        features, lstm_input, labels = data
+        input, labels = data
         optimizer.zero_grad()
-        outputs = model(features, lstm_input)
+        outputs = model(input)
         loss = criterion(outputs, labels)
         loss.backward()
         optimizer.step()
@@ -70,8 +75,8 @@ for epoch in range(5000):
     validation_labels = []
     with torch.no_grad():
         for data in validation_loader:
-            features, lstm_input, labels = data
-            outputs = model(features, lstm_input)
+            input, labels = data
+            outputs = model(input)
             validation_loss += criterion(outputs, labels).item()
             validation_outputs.append(outputs)
             validation_labels.append(labels)

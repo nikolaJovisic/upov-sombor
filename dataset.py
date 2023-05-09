@@ -9,19 +9,19 @@ from torch.utils.data import Dataset
 
 FEATURE_COLUMNS = [
     "Temperatura_(C˚)_ulaz",
-    "pH_ulaz",
-    "HPK_(mg/l)_ulaz",
-    "BPK5_(mg/l)_ulaz",
-    "N_(mg/l)_ulaz",
-    "P_(mg/l)_ulaz",
-    "Susp.materije_(mg/l)_ulaz",
+    # "pH_ulaz",
+    # "HPK_(mg/l)_ulaz",
+    # "BPK5_(mg/l)_ulaz",
+    # "N_(mg/l)_ulaz",
+    # "P_(mg/l)_ulaz",
+    # "Susp.materije_(mg/l)_ulaz",
     # "Q_(m3/dan)_protok",
     # "HRT",
 ]
 
 OUTPUT_COLUMNS = [
-    "HPK_(mg/l)_izlaz",
-    # "BPK5_(mg/l)_izlaz",
+    # "HPK_(mg/l)_izlaz",
+    "BPK5_(mg/l)_izlaz",
     # "N_(mg/l)_izlaz",
     # "P_(mg/l)_izlaz",
     # "Susp.materije_(mg/l)_izlaz",
@@ -29,7 +29,7 @@ OUTPUT_COLUMNS = [
 
 LSTM_COLUMNS = []
 
-SEQUENCE_LENGTH = 5
+SEQUENCE_LENGTH = 0
 
 
 def load():
@@ -68,21 +68,21 @@ def load():
     return df
 
 
-def preprocess(df: pd.DataFrame):
+def preprocess(df: pd.DataFrame, use_lstm: bool):
     # df.drop(columns=["Datum"], inplace=True)
-    df.dropna(subset=['Datum'], inplace=True)
-    df = df[~df['Datum'].str.endswith('(2)')]
+    df.dropna(subset=["Datum"], inplace=True)
+    df = df[~df["Datum"].str.endswith("(2)")]
     df.dropna(subset=FEATURE_COLUMNS, inplace=True)
     df.dropna(subset=OUTPUT_COLUMNS, inplace=True)
 
     def format_date(date: str) -> str:
-        date = date.replace('/', '.')
-        date = date.replace(',', '.')
-        return date.strip('.')
+        date = date.replace("/", ".")
+        date = date.replace(",", ".")
+        return date.strip(".")
 
     df = df.applymap(lambda x: format_date(x) if isinstance(x, str) else x)
-    df['Datum'] = pd.to_datetime(df['Datum'], format='%d.%m.%Y')
-    df.set_index('Datum', inplace=True)
+    df["Datum"] = pd.to_datetime(df["Datum"], format="%d.%m.%Y")
+    df.set_index("Datum", inplace=True)
 
     def format_strings(element):
         if not isinstance(element, str):
@@ -102,12 +102,10 @@ def preprocess(df: pd.DataFrame):
 
     df = df[df[OUTPUT_COLUMNS[0]] < 300]
 
-
-
     # log_cols = [f'{i}_ln' for i in INPUT_COLUMNS]
     # df[log_cols] = np.log(df[INPUT_COLUMNS].values)
     # INPUT_COLUMNS.extend(log_cols)
-    df = df.groupby('Datum').mean().asfreq('D').interpolate(method='time')
+    df = df.groupby("Datum").mean().asfreq("D").interpolate(method="time")
 
     # plt.plot(df[OUTPUT_COLUMNS[0]])
     # plt.xlabel('merenja')
@@ -117,11 +115,11 @@ def preprocess(df: pd.DataFrame):
     scaler = StandardScaler()
     df[FEATURE_COLUMNS] = scaler.fit_transform(df[FEATURE_COLUMNS])
 
-
-
     for i in range(1, SEQUENCE_LENGTH + 1):
-        shifted_col_name = f'{OUTPUT_COLUMNS[0]}_{i}'
-        LSTM_COLUMNS.append(shifted_col_name)
+        shifted_col_name = f"{OUTPUT_COLUMNS[0]}_{i}"
+        LSTM_COLUMNS.append(shifted_col_name) if use_lstm else FEATURE_COLUMNS.append(
+            shifted_col_name
+        )
         df[shifted_col_name] = df[OUTPUT_COLUMNS[0]].shift(i)
 
     df = df.drop(df.index[:SEQUENCE_LENGTH])
@@ -133,9 +131,10 @@ def preprocess(df: pd.DataFrame):
 
 
 class WaterDataset(Dataset):
-    def __init__(self):
+    def __init__(self, use_lstm):
         data = load()
-        self.df = preprocess(data)
+        self.use_lstm = use_lstm
+        self.df = preprocess(data, self.use_lstm)
 
     def __len__(self):
         return len(self.df)
@@ -144,11 +143,15 @@ class WaterDataset(Dataset):
         row = self.df.iloc[index]
 
         features_vector = row[FEATURE_COLUMNS].to_numpy(dtype=np.float32)
-        lstm_vector = np.expand_dims(row[LSTM_COLUMNS].to_numpy(dtype=np.float32), axis=-1)
+        lstm_vector = np.expand_dims(
+            row[LSTM_COLUMNS].to_numpy(dtype=np.float32), axis=-1
+        )
         outputs_vector = row[OUTPUT_COLUMNS].to_numpy(dtype=np.float32)
 
-        return (
-            torch.from_numpy(features_vector),
-            torch.from_numpy(lstm_vector),
-            torch.from_numpy(outputs_vector),
-        )
+        if self.use_lstm:
+            return (
+                (torch.from_numpy(features_vector), torch.from_numpy(lstm_vector)),
+                torch.from_numpy(outputs_vector),
+            )
+        else:
+            return torch.from_numpy(features_vector), torch.from_numpy(outputs_vector)
