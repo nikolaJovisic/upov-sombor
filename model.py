@@ -6,18 +6,19 @@ class WaterNet(nn.Module):
     def __init__(self, features_size, lstm_input_size, output_size, use_lstm=False):
         super(WaterNet, self).__init__()
         self.use_lstm = use_lstm
+        neurons = 100
         if self.use_lstm:
-            hidden_size = 10
+            lstm_hidden_size = 10
             self.lstm = nn.LSTM(
                 input_size=lstm_input_size,
-                hidden_size=hidden_size,
+                hidden_size=lstm_hidden_size,
                 num_layers=1,
                 batch_first=True,
             )
-            self.input_fc = nn.Linear(features_size + hidden_size, 200)
+            self.input_fc = nn.Linear(features_size + lstm_hidden_size, neurons)
         else:
-            self.input_fc = nn.Linear(features_size, 200)
-        self.output_fc = nn.Linear(200, output_size)
+            self.input_fc = nn.Linear(features_size, neurons)
+        self.output_fc = nn.Linear(neurons, output_size)
         self.relu = nn.ReLU()
 
     def forward(self, inputs):
