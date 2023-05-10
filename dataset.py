@@ -7,14 +7,16 @@ from matplotlib import pyplot as plt
 from sklearn.preprocessing import StandardScaler
 from torch.utils.data import Dataset
 
+
+
 FEATURE_COLUMNS = [
     "Temperatura_(C˚)_ulaz",
-    # "pH_ulaz",
-    # "HPK_(mg/l)_ulaz",
-    # "BPK5_(mg/l)_ulaz",
-    # "N_(mg/l)_ulaz",
-    # "P_(mg/l)_ulaz",
-    # "Susp.materije_(mg/l)_ulaz",
+    "pH_ulaz",
+    "HPK_(mg/l)_ulaz",
+    "BPK5_(mg/l)_ulaz",
+    "N_(mg/l)_ulaz",
+    "P_(mg/l)_ulaz",
+    "Susp.materije_(mg/l)_ulaz",
     # "Q_(m3/dan)_protok",
     # "HRT",
 ]
@@ -28,8 +30,9 @@ OUTPUT_COLUMNS = [
 ]
 
 LSTM_COLUMNS = []
+TRANSFORM_COLUMNS = []
 
-SEQUENCE_LENGTH = 0
+SEQUENCE_LENGTH = 10
 
 
 def load():
@@ -102,9 +105,7 @@ def preprocess(df: pd.DataFrame, use_lstm: bool):
 
     df = df[df[OUTPUT_COLUMNS[0]] < 300]
 
-    # log_cols = [f'{i}_ln' for i in INPUT_COLUMNS]
-    # df[log_cols] = np.log(df[INPUT_COLUMNS].values)
-    # INPUT_COLUMNS.extend(log_cols)
+
     df = df.groupby("Datum").mean().asfreq("D").interpolate(method="time")
 
     # plt.plot(df[OUTPUT_COLUMNS[0]])
@@ -112,15 +113,35 @@ def preprocess(df: pd.DataFrame, use_lstm: bool):
     # plt.ylabel(OUTPUT_COLUMNS[0])
     # plt.show()
 
-    scaler = StandardScaler()
-    df[FEATURE_COLUMNS] = scaler.fit_transform(df[FEATURE_COLUMNS])
+    # log_cols = [f'{i}_ln' for i in FEATURE_COLUMNS]
+    # df[log_cols] = np.log(df[FEATURE_COLUMNS].values)
+    # TRANSFORM_COLUMNS.extend(log_cols)
 
-    for i in range(1, SEQUENCE_LENGTH + 1):
-        shifted_col_name = f"{OUTPUT_COLUMNS[0]}_{i}"
+    scaler = StandardScaler()
+    columns_to_scale = [*FEATURE_COLUMNS, *TRANSFORM_COLUMNS]
+    df[columns_to_scale] = scaler.fit_transform(df[columns_to_scale])
+
+    # sq_cols = [f'{i}_sq' for i in FEATURE_COLUMNS]
+    # df[sq_cols] = np.square(df[FEATURE_COLUMNS].values)
+    # TRANSFORM_COLUMNS.extend(sq_cols)
+    #
+    # exp_cols = [f'{i}_exp' for i in FEATURE_COLUMNS]
+    # df[exp_cols] = np.exp(df[FEATURE_COLUMNS].values)
+    # TRANSFORM_COLUMNS.extend(exp_cols)
+
+    FEATURE_COLUMNS.extend(TRANSFORM_COLUMNS)
+
+    def create_sequence_column_for(column: str, days: int):
+        shifted_col_name = f"{column}_{days}"
         LSTM_COLUMNS.append(shifted_col_name) if use_lstm else FEATURE_COLUMNS.append(
             shifted_col_name
         )
-        df[shifted_col_name] = df[OUTPUT_COLUMNS[0]].shift(i)
+        df[shifted_col_name] = df[column].shift(days)
+
+    for i in range(1, SEQUENCE_LENGTH + 1):
+        create_sequence_column_for(OUTPUT_COLUMNS[0], i)
+        create_sequence_column_for(OUTPUT_COLUMNS[0][:-len('izlaz')] + 'ulaz', i)
+
 
     df = df.drop(df.index[:SEQUENCE_LENGTH])
 
@@ -155,3 +176,4 @@ class WaterDataset(Dataset):
             )
         else:
             return torch.from_numpy(features_vector), torch.from_numpy(outputs_vector)
+
