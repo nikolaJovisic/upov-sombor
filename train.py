@@ -5,24 +5,30 @@ from sklearn.metrics import r2_score
 from torch import nn
 from torch._dynamo.utils import rmse
 from torch.optim.lr_scheduler import ExponentialLR
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader, random_split, Subset
 
-from dataset import FEATURE_COLUMNS, OUTPUT_COLUMNS, WaterDataset
+from dataset import FEATURE_COLUMNS, OUTPUT_COLUMNS, WaterDataset, SEQUENCE_LENGTH
 from model import WaterNet
 
 use_lstm = False
 
 dataset = WaterDataset(use_lstm=use_lstm)
 
-train_set, validation_set, test_set = random_split(dataset, lengths=(0.7, 0.2, 0.1))
+
+train_size = int(0.7 * len(dataset))
+valid_size = int(0.2 * len(dataset))
+
+train_set = Subset(dataset, range(train_size))
+validation_set = Subset(dataset, range(train_size + SEQUENCE_LENGTH, train_size + valid_size))
+test_set = Subset(dataset, range(train_size + valid_size, len(dataset)))
 
 batch_size = 8
 
 train_loader = DataLoader(
-    train_set, batch_size=batch_size, shuffle=True, drop_last=True
+    train_set, batch_size=batch_size, shuffle=False, drop_last=True
 )
 validation_loader = DataLoader(
-    validation_set, batch_size=batch_size, shuffle=True, drop_last=True
+    validation_set, batch_size=batch_size, shuffle=False, drop_last=True
 )
 
 feature_size = len(FEATURE_COLUMNS)
