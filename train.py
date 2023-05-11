@@ -23,7 +23,7 @@ train_set = Subset(dataset, range(train_size))
 validation_set = Subset(
     dataset, range(train_size + SEQUENCE_LENGTH, train_size + valid_size)
 )
-test_set = Subset(dataset, range(train_size + valid_size, len(dataset)))
+test_set = Subset(dataset, range(train_size + valid_size + SEQUENCE_LENGTH, len(dataset)))
 
 batch_size = 8
 
