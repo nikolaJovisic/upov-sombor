@@ -5,16 +5,16 @@ from sklearn.metrics import r2_score
 from torch import nn
 from torch._dynamo.utils import rmse
 from torch.optim.lr_scheduler import ExponentialLR
-from torch.utils.data import DataLoader, Subset, random_split
+from torch.utils.data import DataLoader, Subset
 
 from dataset import (FEATURE_COLUMNS, OUTPUT_COLUMNS, SEQUENCE_LENGTH,
                      WaterDataset)
 from model import WaterNet
 
-use_seq = True
+mode = 'lstm'
 
+use_seq = mode != 'mlp'
 dataset = WaterDataset(use_seq=use_seq)
-
 
 train_size = int(0.7 * len(dataset))
 valid_size = int(0.2 * len(dataset))
@@ -42,7 +42,7 @@ model = WaterNet(
     seq_length=SEQUENCE_LENGTH,
     seq_channels=2,
     output_size=output_size,
-    mode="conv",
+    mode=mode,
 )
 
 criterion = nn.MSELoss()

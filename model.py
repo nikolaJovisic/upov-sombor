@@ -7,16 +7,16 @@ class WaterNet(nn.Module):
         self, features_size, seq_length, seq_channels=2, output_size=1, mode="mlp"
     ):
         """
-        :param features_size: Size of inputs passed directly.
-        :param seq_length: Window size for sampling.
+        :param features_size: Size of inputs passed directly to MLP.
+        :param seq_length: Number of sequence elements.
         :param seq_channels: Number of features (channels) in each element of the sequence
-        (typically 2 because _ulaz and _izlaz are used)
-        :param output_size: Number of predicted features (typically only 1)
-        :param mode: Sequence part of the model mode - 'mlp', 'lstm' or 'conv'
+        (typically 2 because _ulaz and _izlaz are used).
+        :param output_size: Number of predicted features (typically only 1).
+        :param mode: Sequence part of the model mode - 'mlp', 'lstm' or 'conv'.
         """
         super(WaterNet, self).__init__()
         self.mode = mode
-        neurons = 200
+        fc_neurons = 200
 
         if self.mode == "lstm":
             lstm_hidden_size = 10
@@ -26,7 +26,7 @@ class WaterNet(nn.Module):
                 num_layers=1,
                 batch_first=True,
             )
-            self.input_fc = nn.Linear(features_size + lstm_hidden_size, neurons)
+            self.input_fc = nn.Linear(features_size + lstm_hidden_size, fc_neurons)
         elif self.mode == "conv":
             conv_out_channels = 3
             conv_kernel_size = 5
@@ -37,12 +37,12 @@ class WaterNet(nn.Module):
             )
             self.input_fc = nn.Linear(
                 features_size + conv_out_channels * (seq_length - conv_kernel_size + 1),
-                neurons,
+                fc_neurons,
             )
         else:
-            self.input_fc = nn.Linear(features_size, neurons)
+            self.input_fc = nn.Linear(features_size, fc_neurons)
 
-        self.output_fc = nn.Linear(neurons, output_size)
+        self.output_fc = nn.Linear(fc_neurons, output_size)
         self.relu = nn.ReLU()
 
     def forward(self, inputs):

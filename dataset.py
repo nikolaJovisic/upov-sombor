@@ -27,7 +27,7 @@ OUTPUT_COLUMNS = [
     # "Susp.materije_(mg/l)_izlaz",
 ]
 
-LSTM_COLUMNS = []
+SEQUENCE_COLUMNS = []
 TRANSFORM_COLUMNS = []
 
 SEQUENCE_LENGTH = 10
@@ -70,7 +70,6 @@ def load():
 
 
 def preprocess(df: pd.DataFrame, use_lstm: bool):
-    # df.drop(columns=["Datum"], inplace=True)
     df.dropna(subset=["Datum"], inplace=True)
     df = df[~df["Datum"].str.endswith("(2)")]
     df.dropna(subset=FEATURE_COLUMNS, inplace=True)
@@ -130,7 +129,7 @@ def preprocess(df: pd.DataFrame, use_lstm: bool):
 
     def create_sequence_column_for(column: str, days: int):
         shifted_col_name = f"{column}_{days}"
-        LSTM_COLUMNS.append(shifted_col_name) if use_lstm else FEATURE_COLUMNS.append(
+        SEQUENCE_COLUMNS.append(shifted_col_name) if use_lstm else FEATURE_COLUMNS.append(
             shifted_col_name
         )
         df[shifted_col_name] = df[column].shift(days)
@@ -160,7 +159,7 @@ class WaterDataset(Dataset):
         row = self.df.iloc[index]
 
         features_vector = row[FEATURE_COLUMNS].to_numpy(dtype=np.float32)
-        seq_vector = np.reshape(row[LSTM_COLUMNS].to_numpy(dtype=np.float32), (-1, 2))
+        seq_vector = np.reshape(row[SEQUENCE_COLUMNS].to_numpy(dtype=np.float32), (-1, 2))
         outputs_vector = row[OUTPUT_COLUMNS].to_numpy(dtype=np.float32)
 
         if self.use_seq:
