@@ -11,13 +11,13 @@ from dataset import (FEATURE_COLUMNS, OUTPUT_COLUMNS, SEQUENCE_LENGTH,
                      WaterDataset)
 from model import WaterNet
 
-mode = 'lstm'
+mode = 'conv'
 
 use_seq = mode != 'mlp'
 dataset = WaterDataset(use_seq=use_seq)
 
-train_size = int(0.7 * len(dataset))
-valid_size = int(0.2 * len(dataset))
+train_size = int(0.75 * len(dataset))
+valid_size = int(0.15 * len(dataset))
 
 train_set = Subset(dataset, range(train_size))
 validation_set = Subset(
@@ -33,6 +33,9 @@ train_loader = DataLoader(
 validation_loader = DataLoader(
     validation_set, batch_size=batch_size, shuffle=False, drop_last=True
 )
+test_loader = DataLoader(
+    test_set, batch_size=batch_size, shuffle=False, drop_last=True
+)
 
 feature_size = len(FEATURE_COLUMNS)
 output_size = len(OUTPUT_COLUMNS)
@@ -46,7 +49,7 @@ model = WaterNet(
 )
 
 criterion = nn.MSELoss()
-optimizer = optim.Adam(model.parameters(), lr=0.0001)
+optimizer = optim.Adam(model.parameters(), lr=0.0005)
 scheduler = ExponentialLR(optimizer, gamma=0.99)
 best_validation_loss = np.inf
 
@@ -55,7 +58,8 @@ validation_loss_history = []
 train_r2_history = []
 validation_r2_history = []
 
-for epoch in range(5000):
+
+for epoch in range(30):
     model.train()
     train_loss = 0.0
     train_outputs = []
@@ -73,6 +77,8 @@ for epoch in range(5000):
 
     scheduler.step()
     train_loss /= len(train_loader)
+
+    model.eval()
 
     with torch.no_grad():
         train_outputs = torch.cat(train_outputs)
@@ -96,10 +102,6 @@ for epoch in range(5000):
         validation_outputs = torch.cat(validation_outputs)
         validation_labels = torch.cat(validation_labels)
         validation_r2 = r2_score(validation_labels.numpy(), validation_outputs.numpy())
-
-        if epoch % 10 == 0:
-            stacked = np.squeeze(np.stack((validation_labels, validation_outputs)))
-
         validation_rmse = rmse(validation_labels, validation_outputs)
 
         if validation_loss < best_validation_loss:
@@ -126,3 +128,23 @@ for epoch in range(5000):
         validation_loss_history.append(validation_loss)
         train_r2_history.append(train_r2)
         validation_r2_history.append(validation_r2)
+
+model.load_state_dict(torch.load("water_net.pt"))
+model.eval()
+
+with torch.no_grad():
+    test_outputs = []
+    test_labels = []
+    for data in test_loader:
+        input, labels = data
+        outputs = model(input)
+        test_outputs.append(outputs)
+        test_labels.append(labels)
+    test_outputs = torch.cat(test_outputs)
+    test_labels = torch.cat(test_labels)
+    test_r2 = r2_score(test_labels.numpy(), test_outputs.numpy())
+    test_rmse = rmse(test_labels, test_outputs)
+
+    print(f"test_r2:{test_r2:.3f}, test_rmse:{test_rmse:.3f}")
+    for i in zip(validation_labels, validation_outputs):
+        print(i)
