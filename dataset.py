@@ -86,8 +86,9 @@ def preprocess(df: pd.DataFrame, use_seq: bool):
 
     df = df.applymap(lambda x: format_date(x) if isinstance(x, str) else x)
     df["Datum"] = pd.to_datetime(df["Datum"], format="%d.%m.%Y")
-    FEATURE_COLUMNS.append("weekday")
-    df["weekday"] = df["Datum"].apply(lambda dt: dt.weekday())
+    if 'weekday' in SEQUENCE_CHANNELS:
+        FEATURE_COLUMNS.append("weekday")
+        df["weekday"] = df["Datum"].apply(lambda dt: dt.weekday())
     df.set_index("Datum", inplace=True)
 
     def format_strings(element):
