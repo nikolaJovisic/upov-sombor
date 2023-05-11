@@ -7,8 +7,6 @@ from matplotlib import pyplot as plt
 from sklearn.preprocessing import StandardScaler
 from torch.utils.data import Dataset
 
-
-
 FEATURE_COLUMNS = [
     "Temperatura_(C˚)_ulaz",
     "pH_ulaz",
@@ -105,7 +103,6 @@ def preprocess(df: pd.DataFrame, use_lstm: bool):
 
     df = df[df[OUTPUT_COLUMNS[0]] < 300]
 
-
     df = df.groupby("Datum").mean().asfreq("D").interpolate(method="time")
 
     # plt.plot(df[OUTPUT_COLUMNS[0]])
@@ -113,7 +110,7 @@ def preprocess(df: pd.DataFrame, use_lstm: bool):
     # plt.ylabel(OUTPUT_COLUMNS[0])
     # plt.show()
 
-    log_cols = [f'{i}_ln' for i in FEATURE_COLUMNS]
+    log_cols = [f"{i}_ln" for i in FEATURE_COLUMNS]
     df[log_cols] = np.log(df[FEATURE_COLUMNS].values)
     TRANSFORM_COLUMNS.extend(log_cols)
 
@@ -121,7 +118,7 @@ def preprocess(df: pd.DataFrame, use_lstm: bool):
     columns_to_scale = [*FEATURE_COLUMNS, *TRANSFORM_COLUMNS]
     df[columns_to_scale] = scaler.fit_transform(df[columns_to_scale])
 
-    sq_cols = [f'{i}_sq' for i in FEATURE_COLUMNS]
+    sq_cols = [f"{i}_sq" for i in FEATURE_COLUMNS]
     df[sq_cols] = np.square(df[FEATURE_COLUMNS].values)
     TRANSFORM_COLUMNS.extend(sq_cols)
 
@@ -140,8 +137,7 @@ def preprocess(df: pd.DataFrame, use_lstm: bool):
 
     for i in range(1, SEQUENCE_LENGTH + 1):
         create_sequence_column_for(OUTPUT_COLUMNS[0], i)
-        create_sequence_column_for(OUTPUT_COLUMNS[0][:-len('izlaz')] + 'ulaz', i)
-
+        create_sequence_column_for(OUTPUT_COLUMNS[0][: -len("izlaz")] + "ulaz", i)
 
     df = df.drop(df.index[:SEQUENCE_LENGTH])
 
@@ -164,9 +160,7 @@ class WaterDataset(Dataset):
         row = self.df.iloc[index]
 
         features_vector = row[FEATURE_COLUMNS].to_numpy(dtype=np.float32)
-        seq_vector = np.reshape(
-            row[LSTM_COLUMNS].to_numpy(dtype=np.float32), (-1, 2)
-        )
+        seq_vector = np.reshape(row[LSTM_COLUMNS].to_numpy(dtype=np.float32), (-1, 2))
         outputs_vector = row[OUTPUT_COLUMNS].to_numpy(dtype=np.float32)
 
         if self.use_seq:
@@ -176,4 +170,3 @@ class WaterDataset(Dataset):
             )
         else:
             return torch.from_numpy(features_vector), torch.from_numpy(outputs_vector)
-

@@ -5,9 +5,10 @@ from sklearn.metrics import r2_score
 from torch import nn
 from torch._dynamo.utils import rmse
 from torch.optim.lr_scheduler import ExponentialLR
-from torch.utils.data import DataLoader, random_split, Subset
+from torch.utils.data import DataLoader, Subset, random_split
 
-from dataset import FEATURE_COLUMNS, OUTPUT_COLUMNS, WaterDataset, SEQUENCE_LENGTH
+from dataset import (FEATURE_COLUMNS, OUTPUT_COLUMNS, SEQUENCE_LENGTH,
+                     WaterDataset)
 from model import WaterNet
 
 use_seq = True
@@ -15,11 +16,13 @@ use_seq = True
 dataset = WaterDataset(use_seq=use_seq)
 
 
-train_size = int(0.5 * len(dataset))
-valid_size = int(0.5 * len(dataset))
+train_size = int(0.7 * len(dataset))
+valid_size = int(0.2 * len(dataset))
 
 train_set = Subset(dataset, range(train_size))
-validation_set = Subset(dataset, range(train_size + SEQUENCE_LENGTH, train_size + valid_size))
+validation_set = Subset(
+    dataset, range(train_size + SEQUENCE_LENGTH, train_size + valid_size)
+)
 test_set = Subset(dataset, range(train_size + valid_size, len(dataset)))
 
 batch_size = 8
@@ -39,7 +42,7 @@ model = WaterNet(
     seq_length=SEQUENCE_LENGTH,
     seq_channels=2,
     output_size=output_size,
-    mode='conv',
+    mode="conv",
 )
 
 criterion = nn.MSELoss()
@@ -123,4 +126,3 @@ for epoch in range(5000):
         validation_loss_history.append(validation_loss)
         train_r2_history.append(train_r2)
         validation_r2_history.append(validation_r2)
-
