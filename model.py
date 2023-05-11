@@ -4,13 +4,12 @@ import torch.nn as nn
 
 class WaterNet(nn.Module):
     def __init__(
-        self, features_size, seq_length, seq_channels=2, output_size=1, mode="mlp"
+        self, features_size, seq_length, seq_channels, output_size=1, mode="mlp"
     ):
         """
         :param features_size: Size of inputs passed directly to MLP.
         :param seq_length: Number of sequence elements.
-        :param seq_channels: Number of features (channels) in each element of the sequence
-        (typically 2 because _ulaz and _izlaz are used).
+        :param seq_channels: Number of features (channels) in each element of the sequence.
         :param output_size: Number of predicted features (typically only 1).
         :param mode: Sequence part of the model mode - 'mlp', 'lstm' or 'conv'.
         """

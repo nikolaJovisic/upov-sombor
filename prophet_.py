@@ -5,7 +5,7 @@ from sklearn.metrics import mean_squared_error, r2_score
 from dataset import FEATURE_COLUMNS, OUTPUT_COLUMNS, load, preprocess
 
 df = load()
-df = preprocess(df, use_lstm=False)
+df = preprocess(df, use_seq=False)
 df = df.drop(columns=FEATURE_COLUMNS)
 df.reset_index(inplace=True)
 df = df.rename(columns={OUTPUT_COLUMNS[0]: "y", "Datum": "ds"})

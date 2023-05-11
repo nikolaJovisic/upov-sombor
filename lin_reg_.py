@@ -5,7 +5,7 @@ from sklearn.metrics import mean_squared_error, r2_score
 from dataset import OUTPUT_COLUMNS, load, preprocess
 
 df = load()
-df = preprocess(df, use_lstm=False)
+df = preprocess(df, use_seq=False)
 
 train_size = int(0.8 * len(df))
 train_data = df[:train_size]

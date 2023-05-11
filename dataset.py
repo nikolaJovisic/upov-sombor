@@ -26,7 +26,11 @@ OUTPUT_COLUMNS = [
     # "P_(mg/l)_izlaz",
     # "Susp.materije_(mg/l)_izlaz",
 ]
-
+SEQUENCE_CHANNELS = [
+    OUTPUT_COLUMNS[0],
+    OUTPUT_COLUMNS[0][: -len("izlaz")] + "ulaz",
+    "weekday",
+]
 SEQUENCE_COLUMNS = []
 TRANSFORM_COLUMNS = []
 
@@ -69,7 +73,7 @@ def load():
     return df
 
 
-def preprocess(df: pd.DataFrame, use_lstm: bool):
+def preprocess(df: pd.DataFrame, use_seq: bool):
     df.dropna(subset=["Datum"], inplace=True)
     df = df[~df["Datum"].str.endswith("(2)")]
     df.dropna(subset=FEATURE_COLUMNS, inplace=True)
@@ -82,6 +86,8 @@ def preprocess(df: pd.DataFrame, use_lstm: bool):
 
     df = df.applymap(lambda x: format_date(x) if isinstance(x, str) else x)
     df["Datum"] = pd.to_datetime(df["Datum"], format="%d.%m.%Y")
+    FEATURE_COLUMNS.append("weekday")
+    df["weekday"] = df["Datum"].apply(lambda dt: dt.weekday())
     df.set_index("Datum", inplace=True)
 
     def format_strings(element):
@@ -109,34 +115,36 @@ def preprocess(df: pd.DataFrame, use_lstm: bool):
     # plt.ylabel(OUTPUT_COLUMNS[0])
     # plt.show()
 
-    log_cols = [f"{i}_ln" for i in FEATURE_COLUMNS]
-    df[log_cols] = np.log(df[FEATURE_COLUMNS].values)
+    numeric_columns = [i for i in FEATURE_COLUMNS if i != 'weekday']
+
+    log_cols = [f"{i}_ln" for i in numeric_columns]
+    df[log_cols] = np.log(df[numeric_columns].values)
     TRANSFORM_COLUMNS.extend(log_cols)
 
     scaler = StandardScaler()
     columns_to_scale = [*FEATURE_COLUMNS, *TRANSFORM_COLUMNS]
     df[columns_to_scale] = scaler.fit_transform(df[columns_to_scale])
 
-    sq_cols = [f"{i}_sq" for i in FEATURE_COLUMNS]
-    df[sq_cols] = np.square(df[FEATURE_COLUMNS].values)
+    sq_cols = [f"{i}_sq" for i in numeric_columns]
+    df[sq_cols] = np.square(df[numeric_columns].values)
     TRANSFORM_COLUMNS.extend(sq_cols)
 
-    # exp_cols = [f'{i}_exp' for i in FEATURE_COLUMNS]
-    # df[exp_cols] = np.exp(df[FEATURE_COLUMNS].values)
+    # exp_cols = [f'{i}_exp' for i in numeric_columns]
+    # df[exp_cols] = np.exp(df[numeric_columns].values)
     # TRANSFORM_COLUMNS.extend(exp_cols)
 
     FEATURE_COLUMNS.extend(TRANSFORM_COLUMNS)
 
     def create_sequence_column_for(column: str, days: int):
         shifted_col_name = f"{column}_{days}"
-        SEQUENCE_COLUMNS.append(shifted_col_name) if use_lstm else FEATURE_COLUMNS.append(
+        SEQUENCE_COLUMNS.append(
             shifted_col_name
-        )
+        ) if use_seq else FEATURE_COLUMNS.append(shifted_col_name)
         df[shifted_col_name] = df[column].shift(days)
 
     for i in range(1, SEQUENCE_LENGTH + 1):
-        create_sequence_column_for(OUTPUT_COLUMNS[0], i)
-        create_sequence_column_for(OUTPUT_COLUMNS[0][: -len("izlaz")] + "ulaz", i)
+        for channel in SEQUENCE_CHANNELS:
+            create_sequence_column_for(channel, i)
 
     df = df.drop(df.index[:SEQUENCE_LENGTH])
 
@@ -159,7 +167,10 @@ class WaterDataset(Dataset):
         row = self.df.iloc[index]
 
         features_vector = row[FEATURE_COLUMNS].to_numpy(dtype=np.float32)
-        seq_vector = np.reshape(row[SEQUENCE_COLUMNS].to_numpy(dtype=np.float32), (-1, 2))
+        seq_vector = np.reshape(
+            row[SEQUENCE_COLUMNS].to_numpy(dtype=np.float32),
+            (-1, len(SEQUENCE_CHANNELS)),
+        )
         outputs_vector = row[OUTPUT_COLUMNS].to_numpy(dtype=np.float32)
 
         if self.use_seq:

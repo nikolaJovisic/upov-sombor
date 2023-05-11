@@ -7,13 +7,12 @@ from torch._dynamo.utils import rmse
 from torch.optim.lr_scheduler import ExponentialLR
 from torch.utils.data import DataLoader, Subset
 
-from dataset import (FEATURE_COLUMNS, OUTPUT_COLUMNS, SEQUENCE_LENGTH,
-                     WaterDataset)
+from dataset import FEATURE_COLUMNS, OUTPUT_COLUMNS, SEQUENCE_LENGTH, WaterDataset, SEQUENCE_CHANNELS
 from model import WaterNet
 
-mode = 'conv'
+mode = "conv"
 
-use_seq = mode != 'mlp'
+use_seq = mode != "mlp"
 dataset = WaterDataset(use_seq=use_seq)
 
 train_size = int(0.75 * len(dataset))
@@ -23,7 +22,9 @@ train_set = Subset(dataset, range(train_size))
 validation_set = Subset(
     dataset, range(train_size + SEQUENCE_LENGTH, train_size + valid_size)
 )
-test_set = Subset(dataset, range(train_size + valid_size + SEQUENCE_LENGTH, len(dataset)))
+test_set = Subset(
+    dataset, range(train_size + valid_size + SEQUENCE_LENGTH, len(dataset))
+)
 
 batch_size = 8
 
@@ -33,9 +34,7 @@ train_loader = DataLoader(
 validation_loader = DataLoader(
     validation_set, batch_size=batch_size, shuffle=False, drop_last=True
 )
-test_loader = DataLoader(
-    test_set, batch_size=batch_size, shuffle=False, drop_last=True
-)
+test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False, drop_last=True)
 
 feature_size = len(FEATURE_COLUMNS)
 output_size = len(OUTPUT_COLUMNS)
@@ -43,14 +42,14 @@ output_size = len(OUTPUT_COLUMNS)
 model = WaterNet(
     features_size=feature_size,
     seq_length=SEQUENCE_LENGTH,
-    seq_channels=2,
+    seq_channels=len(SEQUENCE_CHANNELS),
     output_size=output_size,
     mode=mode,
 )
 
 criterion = nn.MSELoss()
 optimizer = optim.Adam(model.parameters(), lr=0.0005)
-scheduler = ExponentialLR(optimizer, gamma=0.99)
+scheduler = ExponentialLR(optimizer, gamma=0.9)
 best_validation_loss = np.inf
 
 train_loss_history = []
