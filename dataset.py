@@ -113,18 +113,18 @@ def preprocess(df: pd.DataFrame, use_lstm: bool):
     # plt.ylabel(OUTPUT_COLUMNS[0])
     # plt.show()
 
-    # log_cols = [f'{i}_ln' for i in FEATURE_COLUMNS]
-    # df[log_cols] = np.log(df[FEATURE_COLUMNS].values)
-    # TRANSFORM_COLUMNS.extend(log_cols)
+    log_cols = [f'{i}_ln' for i in FEATURE_COLUMNS]
+    df[log_cols] = np.log(df[FEATURE_COLUMNS].values)
+    TRANSFORM_COLUMNS.extend(log_cols)
 
     scaler = StandardScaler()
     columns_to_scale = [*FEATURE_COLUMNS, *TRANSFORM_COLUMNS]
     df[columns_to_scale] = scaler.fit_transform(df[columns_to_scale])
 
-    # sq_cols = [f'{i}_sq' for i in FEATURE_COLUMNS]
-    # df[sq_cols] = np.square(df[FEATURE_COLUMNS].values)
-    # TRANSFORM_COLUMNS.extend(sq_cols)
-    #
+    sq_cols = [f'{i}_sq' for i in FEATURE_COLUMNS]
+    df[sq_cols] = np.square(df[FEATURE_COLUMNS].values)
+    TRANSFORM_COLUMNS.extend(sq_cols)
+
     # exp_cols = [f'{i}_exp' for i in FEATURE_COLUMNS]
     # df[exp_cols] = np.exp(df[FEATURE_COLUMNS].values)
     # TRANSFORM_COLUMNS.extend(exp_cols)
@@ -152,10 +152,10 @@ def preprocess(df: pd.DataFrame, use_lstm: bool):
 
 
 class WaterDataset(Dataset):
-    def __init__(self, use_lstm):
+    def __init__(self, use_seq):
         data = load()
-        self.use_lstm = use_lstm
-        self.df = preprocess(data, self.use_lstm)
+        self.use_seq = use_seq
+        self.df = preprocess(data, self.use_seq)
 
     def __len__(self):
         return len(self.df)
@@ -164,14 +164,14 @@ class WaterDataset(Dataset):
         row = self.df.iloc[index]
 
         features_vector = row[FEATURE_COLUMNS].to_numpy(dtype=np.float32)
-        lstm_vector = np.expand_dims(
-            row[LSTM_COLUMNS].to_numpy(dtype=np.float32), axis=-1
+        seq_vector = np.reshape(
+            row[LSTM_COLUMNS].to_numpy(dtype=np.float32), (-1, 2)
         )
         outputs_vector = row[OUTPUT_COLUMNS].to_numpy(dtype=np.float32)
 
-        if self.use_lstm:
+        if self.use_seq:
             return (
-                (torch.from_numpy(features_vector), torch.from_numpy(lstm_vector)),
+                (torch.from_numpy(features_vector), torch.from_numpy(seq_vector)),
                 torch.from_numpy(outputs_vector),
             )
         else:
