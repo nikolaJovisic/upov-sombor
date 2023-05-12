@@ -147,7 +147,14 @@ def preprocess(df: pd.DataFrame, use_seq: bool):
         for channel in SEQUENCE_CHANNELS:
             create_sequence_column_for(channel, i)
 
+
     df = df.drop(df.index[:SEQUENCE_LENGTH])
+
+    columns_to_average = [f'{OUTPUT_COLUMNS[0]}_{i}' for i in range(1, SEQUENCE_LENGTH + 1)]
+
+    df['average'] = df[columns_to_average].mean(axis=1)
+
+    FEATURE_COLUMNS.append('average')
 
     corr_matrix = df.corr()
     print(corr_matrix)
