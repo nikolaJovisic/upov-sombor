@@ -17,6 +17,7 @@ FEATURE_COLUMNS = [
     "Susp.materije_(mg/l)_ulaz",
     # "Q_(m3/dan)_protok",
     # "HRT",
+    
 ]
 
 OUTPUT_COLUMNS = [
@@ -117,6 +118,9 @@ def preprocess(df: pd.DataFrame, use_seq: bool):
     # plt.show()
 
     numeric_columns = [i for i in FEATURE_COLUMNS if i != 'weekday']
+
+    a = df.describe()
+    a.to_csv('stats.csv', index=True)
 
     log_cols = [f"{i}_ln" for i in numeric_columns]
     df[log_cols] = np.log(df[numeric_columns].values)

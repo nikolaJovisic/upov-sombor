@@ -1,22 +1,28 @@
 import numpy as np
 import torch
 import torch.optim as optim
+from matplotlib import pyplot as plt
 from sklearn.metrics import r2_score
 from torch import nn
-from torch._dynamo.utils import rmse
+from sklearn.metrics import mean_squared_error
+from sklearn.metrics import mean_absolute_percentage_error as mape
 from torch.optim.lr_scheduler import ExponentialLR
 from torch.utils.data import DataLoader, Subset
 
 from dataset import FEATURE_COLUMNS, OUTPUT_COLUMNS, SEQUENCE_LENGTH, WaterDataset, SEQUENCE_CHANNELS
 from model import WaterNet
 
-mode = "conv"
+def rmse(*args):
+    return np.sqrt(mean_squared_error(*args))
+
+
+mode = "lstm"
 
 use_seq = mode != "mlp"
 dataset = WaterDataset(use_seq=use_seq)
 
-train_size = int(0.75 * len(dataset))
-valid_size = int(0.15 * len(dataset))
+train_size = int(0.65 * len(dataset))
+valid_size = int(0.25 * len(dataset))
 
 train_set = Subset(dataset, range(train_size))
 validation_set = Subset(
@@ -32,9 +38,9 @@ train_loader = DataLoader(
     train_set, batch_size=batch_size, shuffle=False, drop_last=True
 )
 validation_loader = DataLoader(
-    validation_set, batch_size=batch_size, shuffle=False, drop_last=True
+    test_set, batch_size=batch_size, shuffle=False, drop_last=True
 )
-test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False, drop_last=True)
+test_loader = DataLoader(validation_set, batch_size=batch_size, shuffle=False, drop_last=True)
 
 feature_size = len(FEATURE_COLUMNS)
 output_size = len(OUTPUT_COLUMNS)
@@ -48,7 +54,7 @@ model = WaterNet(
 )
 
 criterion = nn.MSELoss()
-optimizer = optim.Adam(model.parameters(), lr=0.0005)
+optimizer = optim.Adam(model.parameters(), lr=0.005)
 scheduler = ExponentialLR(optimizer, gamma=0.9)
 best_validation_loss = np.inf
 
@@ -84,6 +90,7 @@ for epoch in range(30):
         train_labels = torch.cat(train_labels)
         train_r2 = r2_score(train_labels.numpy(), train_outputs.numpy())
         train_rmse = rmse(train_labels, train_outputs)
+        train_mape = mape(train_labels, train_outputs)
 
         validation_loss = 0.0
         validation_outputs = []
@@ -102,6 +109,7 @@ for epoch in range(30):
         validation_labels = torch.cat(validation_labels)
         validation_r2 = r2_score(validation_labels.numpy(), validation_outputs.numpy())
         validation_rmse = rmse(validation_labels, validation_outputs)
+        validation_mape = mape(validation_labels, validation_outputs)
 
         if validation_loss < best_validation_loss:
             print(
@@ -120,7 +128,9 @@ for epoch in range(30):
             f"train_r2:{train_r2:.3f}, "
             f"validation_r2:{validation_r2:.3f}, "
             f"train_rmse:{train_rmse:.3f}, "
-            f"validation_rmse:{validation_rmse:.3f}"
+            f"validation_rmse:{validation_rmse:.3f}, "
+            f"train_mape:{train_mape:.3f}, "
+            f"validation_mape:{validation_mape:.3f}"
         )
 
         train_loss_history.append(train_loss)
@@ -143,7 +153,20 @@ with torch.no_grad():
     test_labels = torch.cat(test_labels)
     test_r2 = r2_score(test_labels.numpy(), test_outputs.numpy())
     test_rmse = rmse(test_labels, test_outputs)
+    test_mape = mape(test_labels, test_outputs)
 
-    print(f"test_r2:{test_r2:.3f}, test_rmse:{test_rmse:.3f}")
-    for i in zip(validation_labels, validation_outputs):
-        print(i)
+    print(f"test_r2:{test_r2:.3f} test_rmse:{test_rmse:.3f}, test_mape:{test_mape:.3f}")
+    # for i in zip(validation_labels, validation_outputs):
+    #     print(i)
+
+    num_outputs = test_outputs.size(1)
+    for i in range(num_outputs):
+        output = test_outputs[:, i].numpy()
+        label = test_labels[:, i].numpy()
+
+        # Creating a scatter plot
+        plt.scatter(label, output)
+        plt.xlabel("True Values")
+        plt.ylabel("Predicted Values")
+        plt.title("Correlation Plot for Output {}".format(i + 1))
+        plt.show()
