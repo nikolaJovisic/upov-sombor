@@ -8,35 +8,65 @@ from sklearn.preprocessing import StandardScaler
 from torch.utils.data import Dataset
 
 FEATURE_COLUMNS = [
-    "Temperatura_(C˚)_ulaz",
-    "pH_ulaz",
-    "HPK_(mg/l)_ulaz",
-    "BPK5_(mg/l)_ulaz",
-    "N_(mg/l)_ulaz",
-    "P_(mg/l)_ulaz",
-    "Susp.materije_(mg/l)_ulaz",
-    # "Q_(m3/dan)_protok",
-    # "HRT",
-    
+    "Temperature_(C˚)_in",
+    "pH_in",
+    "COD_(mg/l)_in",
+    "BOD5_(mg/l)_in",
+    "N_(mg/l)_in",
+    "P_(mg/l)_in",
+    "TSS_(mg/l)_in",
 ]
 
 OUTPUT_COLUMNS = [
-    # "HPK_(mg/l)_izlaz",
-    "BPK5_(mg/l)_izlaz",
-    # "N_(mg/l)_izlaz",
-    # "P_(mg/l)_izlaz",
-    # "Susp.materije_(mg/l)_izlaz",
+    "BOD5_(mg/l)_out",
+    # "COD_(mg/l)_out",
 ]
+
 SEQUENCE_CHANNELS = [
     OUTPUT_COLUMNS[0],
-    OUTPUT_COLUMNS[0][: -len("izlaz")] + "ulaz",
-    "weekday",
+    OUTPUT_COLUMNS[0][: -len("out")] + "in",
+    # "weekday",
 ]
 SEQUENCE_COLUMNS = []
 TRANSFORM_COLUMNS = []
 
 SEQUENCE_LENGTH = 10
 
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+
+def generate_violin_plots(df):
+    num_columns = len(df.columns)
+    num_rows = (num_columns // 6) + (num_columns % 6 > 0)
+
+    # Create the figure and subplots
+    fig, axes = plt.subplots(num_rows, 6, figsize=(15, num_rows * 5))
+
+    # Loop through each column in the DataFrame
+    for i, column in enumerate(df.columns):
+        row = i // 6
+        col = i % 6
+
+        # Select the subplot to plot on
+        ax = axes[row, col] if num_rows > 1 else axes[col]
+
+        # Create the violin plot using seaborn
+        sns.violinplot(data=df[column], orient="v", ax=ax)
+
+        # Set labels and title
+        ax.set_ylabel(column)
+
+    # Remove unused subplots if necessary
+    if num_columns < num_rows * 6:
+        for i in range(num_columns, num_rows * 6):
+            fig.delaxes(axes.flatten()[i])
+
+    # Adjust spacing between subplots
+    fig.tight_layout()
+
+    # Show the plot
+    plt.show()
 
 def load():
     df = pd.read_csv("data.csv")
@@ -51,8 +81,8 @@ def load():
     valid_index = 0
     steping_index = 0
     for c in df.iloc[0]:
-        if c == "Datum":
-            new_columns.append("Datum")
+        if c == "Date":
+            new_columns.append("Date")
             continue
         if "Unnamed" not in columns[steping_index]:
             valid_index = steping_index
@@ -72,11 +102,9 @@ def load():
     }
     df = df.rename(columns=col_name_dict)
     return df
-
-
 def preprocess(df: pd.DataFrame, use_seq: bool):
-    df.dropna(subset=["Datum"], inplace=True)
-    df = df[~df["Datum"].str.endswith("(2)")]
+    df.dropna(subset=["Date"], inplace=True)
+    df = df[~df["Date"].str.endswith("(2)")]
     df.dropna(subset=FEATURE_COLUMNS, inplace=True)
     df.dropna(subset=OUTPUT_COLUMNS, inplace=True)
 
@@ -86,11 +114,11 @@ def preprocess(df: pd.DataFrame, use_seq: bool):
         return date.strip(".")
 
     df = df.applymap(lambda x: format_date(x) if isinstance(x, str) else x)
-    df["Datum"] = pd.to_datetime(df["Datum"], format="%d.%m.%Y")
+    df["Date"] = pd.to_datetime(df["Date"], format="%d.%m.%Y")
     if 'weekday' in SEQUENCE_CHANNELS:
         FEATURE_COLUMNS.append("weekday")
-        df["weekday"] = df["Datum"].apply(lambda dt: dt.weekday())
-    df.set_index("Datum", inplace=True)
+        df["weekday"] = df["Date"].apply(lambda dt: dt.weekday())
+    df.set_index("Date", inplace=True)
 
     def format_strings(element):
         if not isinstance(element, str):
@@ -108,19 +136,36 @@ def preprocess(df: pd.DataFrame, use_seq: bool):
     df = df.loc[:, [*FEATURE_COLUMNS, *OUTPUT_COLUMNS]]
     df = df[~(df == 0).any(axis=1)]
 
-    df = df[df[OUTPUT_COLUMNS[0]] < 300]
+    # df = df[df.index.year <= 2018]
+    df = df[df['BOD5_(mg/l)_out'] < 180]
+    # df = df[df['COD_(mg/l)_out'] < 125]
+    df = df[df['COD_(mg/l)_in'] < 2000]
+    df = df[df['BOD5_(mg/l)_in'] < 900]
+    df = df[df['N_(mg/l)_in'] < 200]
+    df = df[df['P_(mg/l)_in'] < 35]
+    df = df[df['TSS_(mg/l)_in'] < 5000]
 
-    df = df.groupby("Datum").mean().asfreq("D").interpolate(method="time")
 
-    # plt.plot(df[OUTPUT_COLUMNS[0]])
-    # plt.xlabel('merenja')
-    # plt.ylabel(OUTPUT_COLUMNS[0])
-    # plt.show()
+
+
+    df = df.groupby("Date").mean()
+    df_interp = df.asfreq("D").interpolate(method="time")
+    rolling_mean = df_interp.rolling(window=50, min_periods=1).mean()
+    df = df.combine_first(rolling_mean)
+
+    # column_to_plot = 'TSS_(mg/l)_in'
+    for column_to_plot in FEATURE_COLUMNS:
+        plt.plot(df[column_to_plot])
+        plt.xlabel('measurements')
+        plt.ylabel(column_to_plot)
+        plt.show()
 
     numeric_columns = [i for i in FEATURE_COLUMNS if i != 'weekday']
 
-    a = df.describe()
-    a.to_csv('stats.csv', index=True)
+    # generate_violin_plots(df)
+
+    # a = df.describe()
+    # a.to_csv('stats.csv', index=True)
 
     log_cols = [f"{i}_ln" for i in numeric_columns]
     df[log_cols] = np.log(df[numeric_columns].values)
