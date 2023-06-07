@@ -6,6 +6,7 @@ import torch
 from matplotlib import pyplot as plt
 from sklearn.preprocessing import StandardScaler
 from torch.utils.data import Dataset
+import seaborn as sns
 
 FEATURE_COLUMNS = [
     "Temperature_(C˚)_in",
@@ -17,14 +18,12 @@ FEATURE_COLUMNS = [
     "TSS_(mg/l)_in",
 ]
 
-OUTPUT_COLUMNS = [
-    "BOD5_(mg/l)_out",
-    # "COD_(mg/l)_out",
-]
+OUTPUT_COLUMN = "BOD5_(mg/l)_out"  # "COD_(mg/l)_out"
+OUTPUT_COLUMNS = [OUTPUT_COLUMN]
 
 SEQUENCE_CHANNELS = [
-    OUTPUT_COLUMNS[0],
-    OUTPUT_COLUMNS[0][: -len("out")] + "in",
+    OUTPUT_COLUMN,
+    OUTPUT_COLUMN[: -len("out")] + "in",
     # "weekday",
 ]
 SEQUENCE_COLUMNS = []
@@ -32,10 +31,21 @@ TRANSFORM_COLUMNS = []
 
 SEQUENCE_LENGTH = 10
 
-import matplotlib.pyplot as plt
-import seaborn as sns
 
-
+def format_date(date: str) -> str:
+    date = date.replace("/", ".")
+    date = date.replace(",", ".")
+    return date.strip(".")
+def format_strings(element):
+    if not isinstance(element, str):
+        return element
+    element = element.replace(",", ".")
+    element = element.strip(". ")
+    try:
+        element = float(element)
+    except:
+        element = 0.0
+    return element
 def generate_violin_plots(df):
     num_columns = len(df.columns)
     num_rows = (num_columns // 6) + (num_columns % 6 > 0)
@@ -67,7 +77,6 @@ def generate_violin_plots(df):
 
     # Show the plot
     plt.show()
-
 def load():
     df = pd.read_csv("data.csv")
 
@@ -105,60 +114,45 @@ def load():
 def preprocess(df: pd.DataFrame, use_seq: bool):
     df.dropna(subset=["Date"], inplace=True)
     df = df[~df["Date"].str.endswith("(2)")]
+
     df.dropna(subset=FEATURE_COLUMNS, inplace=True)
     df.dropna(subset=OUTPUT_COLUMNS, inplace=True)
 
-    def format_date(date: str) -> str:
-        date = date.replace("/", ".")
-        date = date.replace(",", ".")
-        return date.strip(".")
-
     df = df.applymap(lambda x: format_date(x) if isinstance(x, str) else x)
     df["Date"] = pd.to_datetime(df["Date"], format="%d.%m.%Y")
+
     if 'weekday' in SEQUENCE_CHANNELS:
         FEATURE_COLUMNS.append("weekday")
         df["weekday"] = df["Date"].apply(lambda dt: dt.weekday())
-    df.set_index("Date", inplace=True)
 
-    def format_strings(element):
-        if not isinstance(element, str):
-            return element
-        element = element.replace(",", ".")
-        element = element.strip(". ")
-        try:
-            element = float(element)
-        except:
-            element = 0.0
-        return element
+    df.set_index("Date", inplace=True)
 
     df = df.applymap(format_strings)
 
-    df = df.loc[:, [*FEATURE_COLUMNS, *OUTPUT_COLUMNS]]
+    df = df.loc[:, [*FEATURE_COLUMNS, OUTPUT_COLUMN]]
     df = df[~(df == 0).any(axis=1)]
 
-    # df = df[df.index.year <= 2018]
-    df = df[df['BOD5_(mg/l)_out'] < 180]
-    # df = df[df['COD_(mg/l)_out'] < 125]
+    if OUTPUT_COLUMN == 'COD_(mg/l)_out':
+        df = df[df['COD_(mg/l)_out'] < 125]
+    if OUTPUT_COLUMN == 'BOD5_(mg/l)_out':
+        df = df[df['BOD5_(mg/l)_out'] < 180]
+
     df = df[df['COD_(mg/l)_in'] < 2000]
     df = df[df['BOD5_(mg/l)_in'] < 900]
     df = df[df['N_(mg/l)_in'] < 200]
     df = df[df['P_(mg/l)_in'] < 35]
     df = df[df['TSS_(mg/l)_in'] < 5000]
 
-
-
-
     df = df.groupby("Date").mean()
     df_interp = df.asfreq("D").interpolate(method="time")
     rolling_mean = df_interp.rolling(window=50, min_periods=1).mean()
     df = df.combine_first(rolling_mean)
 
-    # column_to_plot = 'TSS_(mg/l)_in'
-    for column_to_plot in FEATURE_COLUMNS:
-        plt.plot(df[column_to_plot])
-        plt.xlabel('measurements')
-        plt.ylabel(column_to_plot)
-        plt.show()
+    # for column_to_plot in FEATURE_COLUMNS:
+    #     plt.plot(df[column_to_plot])
+    #     plt.xlabel('measurements')
+    #     plt.ylabel(column_to_plot)
+    #     plt.show()
 
     numeric_columns = [i for i in FEATURE_COLUMNS if i != 'weekday']
 
@@ -167,21 +161,17 @@ def preprocess(df: pd.DataFrame, use_seq: bool):
     # a = df.describe()
     # a.to_csv('stats.csv', index=True)
 
-    log_cols = [f"{i}_ln" for i in numeric_columns]
-    df[log_cols] = np.log(df[numeric_columns].values)
-    TRANSFORM_COLUMNS.extend(log_cols)
+    # log_cols = [f"{i}_ln" for i in numeric_columns]
+    # df[log_cols] = np.log(df[numeric_columns].values)
+    # TRANSFORM_COLUMNS.extend(log_cols)
 
     scaler = StandardScaler()
     columns_to_scale = [*FEATURE_COLUMNS, *TRANSFORM_COLUMNS]
     df[columns_to_scale] = scaler.fit_transform(df[columns_to_scale])
 
-    sq_cols = [f"{i}_sq" for i in numeric_columns]
-    df[sq_cols] = np.square(df[numeric_columns].values)
-    TRANSFORM_COLUMNS.extend(sq_cols)
-
-    # exp_cols = [f'{i}_exp' for i in numeric_columns]
-    # df[exp_cols] = np.exp(df[numeric_columns].values)
-    # TRANSFORM_COLUMNS.extend(exp_cols)
+    # sq_cols = [f"{i}_sq" for i in numeric_columns]
+    # df[sq_cols] = np.square(df[numeric_columns].values)
+    # TRANSFORM_COLUMNS.extend(sq_cols)
 
     FEATURE_COLUMNS.extend(TRANSFORM_COLUMNS)
 
@@ -196,10 +186,9 @@ def preprocess(df: pd.DataFrame, use_seq: bool):
         for channel in SEQUENCE_CHANNELS:
             create_sequence_column_for(channel, i)
 
-
     df = df.drop(df.index[:SEQUENCE_LENGTH])
 
-    columns_to_average = [f'{OUTPUT_COLUMNS[0]}_{i}' for i in range(1, SEQUENCE_LENGTH + 1)]
+    columns_to_average = [f'{OUTPUT_COLUMN}_{i}' for i in range(1, SEQUENCE_LENGTH + 1)]
 
     df['average'] = df[columns_to_average].mean(axis=1)
 
@@ -208,14 +197,16 @@ def preprocess(df: pd.DataFrame, use_seq: bool):
     corr_matrix = df.corr()
     print(corr_matrix)
 
-    return df
+    df_train = df[df.index < '2019-02-01']
+    df_test = df[(df.index >= '2019-04-15') & (df.index <= '2020-03-11')]
+
+    return df_train, df_test
 
 
 class WaterDataset(Dataset):
-    def __init__(self, use_seq):
-        data = load()
+    def __init__(self, df, use_seq):
         self.use_seq = use_seq
-        self.df = preprocess(data, self.use_seq)
+        self.df = df
 
     def __len__(self):
         return len(self.df)

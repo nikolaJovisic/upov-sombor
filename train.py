@@ -9,28 +9,27 @@ from sklearn.metrics import mean_absolute_percentage_error as mape
 from torch.optim.lr_scheduler import ExponentialLR
 from torch.utils.data import DataLoader, Subset
 
-from dataset import FEATURE_COLUMNS, OUTPUT_COLUMNS, SEQUENCE_LENGTH, WaterDataset, SEQUENCE_CHANNELS
+from dataset import FEATURE_COLUMNS, OUTPUT_COLUMNS, SEQUENCE_LENGTH, WaterDataset, SEQUENCE_CHANNELS, load, preprocess
 from model import WaterNet
 
 def rmse(*args):
     return np.sqrt(mean_squared_error(*args))
 
 
-mode = "lstm"
-
+mode = "mlp"
 use_seq = mode != "mlp"
-dataset = WaterDataset(use_seq=use_seq)
 
-train_size = int(0.65 * len(dataset))
-valid_size = int(0.25 * len(dataset))
+data = load()
+train_valid_df, test_df = preprocess(data, use_seq)
 
-train_set = Subset(dataset, range(train_size))
-validation_set = Subset(
-    dataset, range(train_size + SEQUENCE_LENGTH, train_size + valid_size)
-)
-test_set = Subset(
-    dataset, range(train_size + valid_size + SEQUENCE_LENGTH, len(dataset))
-)
+train_valid_set = WaterDataset(train_valid_df, use_seq=use_seq)
+test_set = WaterDataset(test_df, use_seq=use_seq)
+
+train_size = int(0.8 * len(train_valid_set))
+
+train_set = Subset(train_valid_set, range(train_size))
+validation_set = Subset(train_valid_set, range(train_size + SEQUENCE_LENGTH, len(train_valid_set)))
+
 
 batch_size = 8
 
@@ -38,9 +37,9 @@ train_loader = DataLoader(
     train_set, batch_size=batch_size, shuffle=False, drop_last=True
 )
 validation_loader = DataLoader(
-    test_set, batch_size=batch_size, shuffle=False, drop_last=True
+    validation_set, batch_size=batch_size, shuffle=False, drop_last=True
 )
-test_loader = DataLoader(validation_set, batch_size=batch_size, shuffle=False, drop_last=True)
+test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False, drop_last=True)
 
 feature_size = len(FEATURE_COLUMNS)
 output_size = len(OUTPUT_COLUMNS)
@@ -168,5 +167,5 @@ with torch.no_grad():
         plt.scatter(label, output)
         plt.xlabel("True Values")
         plt.ylabel("Predicted Values")
-        plt.title("Correlation Plot for Output {}".format(i + 1))
+        plt.title("COD_" + mode)
         plt.show()
