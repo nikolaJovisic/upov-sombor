@@ -1,0 +1,19 @@
+{
+ "n_measured_days": 1017,
+ "n_calendar_days": 2028,
+ "pct_reconstructed": 49.9,
+ "COD": {
+  "reconstructed": 0.818,
+  "combined": 0.488,
+  "measured": 0.341,
+  "n_reconstructed": 182,
+  "n_measured": 150
+ },
+ "BOD5": {
+  "reconstructed": 0.927,
+  "combined": 0.585,
+  "measured": 0.358,
+  "n_reconstructed": 182,
+  "n_measured": 150
+ }
+}
