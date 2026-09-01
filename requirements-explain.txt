@@ -1,0 +1,6 @@
+# Explainability only, on top of requirements.txt.
+#
+# shap pulls numba and llvmlite, which have no wheels for some platforms and then try to
+# build llvmlite from source and fail. It is kept out of requirements.txt so the core
+# install and CI stay clean. Use the Dockerfile if it will not install locally.
+shap==0.49.1

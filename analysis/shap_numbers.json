@@ -1,0 +1,209 @@
+{
+ "random_forest": {
+  "auc": 0.896,
+  "n_test": 150,
+  "n_features": 40,
+  "top_features": [
+   {
+    "feature": "Effluent N, 1 back",
+    "mean_abs_shap": 0.0995,
+    "direction": "raises risk when high"
+   },
+   {
+    "feature": "Breach 1 back",
+    "mean_abs_shap": 0.0705,
+    "direction": "raises risk when high"
+   },
+   {
+    "feature": "Effluent N, 2 back",
+    "mean_abs_shap": 0.0381,
+    "direction": "raises risk when high"
+   },
+   {
+    "feature": "Breach 2 back",
+    "mean_abs_shap": 0.0232,
+    "direction": "raises risk when high"
+   },
+   {
+    "feature": "Effluent N, 10 measurement mean",
+    "mean_abs_shap": 0.0198,
+    "direction": "raises risk when high"
+   },
+   {
+    "feature": "Influent temperature",
+    "mean_abs_shap": 0.0174,
+    "direction": "lowers risk when high"
+   },
+   {
+    "feature": "Breach rate, last 10",
+    "mean_abs_shap": 0.016,
+    "direction": "raises risk when high"
+   },
+   {
+    "feature": "Effluent N, 3 back",
+    "mean_abs_shap": 0.0143,
+    "direction": "raises risk when high"
+   }
+  ]
+ },
+ "onset": {
+  "n_breaches": 69,
+  "n_onset": 15,
+  "onset_detected_at_0.5": 0,
+  "max_onset_probability": 0.434,
+  "dates": [
+   "2019-04-15",
+   "2019-05-20",
+   "2019-08-20",
+   "2019-08-22",
+   "2019-09-11",
+   "2019-09-23",
+   "2019-10-07",
+   "2019-10-14",
+   "2019-10-18",
+   "2019-11-13",
+   "2019-11-18",
+   "2019-11-25",
+   "2019-12-02",
+   "2019-12-09",
+   "2020-02-19"
+  ]
+ },
+ "alarm_day": {
+  "date": "2019-06-10",
+  "measured_N_out": 57.7,
+  "previous_N_out": 39.7,
+  "predicted_probability": 0.971,
+  "base_rate": 0.456,
+  "contributions": [
+   {
+    "feature": "Effluent N, 1 back",
+    "value": 39.7,
+    "shap": 0.1384
+   },
+   {
+    "feature": "Breach 1 back",
+    "value": 1.0,
+    "shap": 0.0787
+   },
+   {
+    "feature": "Effluent N, 2 back",
+    "value": 51.0,
+    "shap": 0.0661
+   },
+   {
+    "feature": "Effluent N, 10 measurement mean",
+    "value": 45.88,
+    "shap": 0.0355
+   },
+   {
+    "feature": "Effluent N, 3 back",
+    "value": 41.2,
+    "shap": 0.0273
+   },
+   {
+    "feature": "Breach 2 back",
+    "value": 1.0,
+    "shap": 0.0272
+   },
+   {
+    "feature": "Effluent N, 4 back",
+    "value": 43.9,
+    "shap": 0.0252
+   },
+   {
+    "feature": "Breach rate, last 10",
+    "value": 1.0,
+    "shap": 0.0239
+   }
+  ]
+ },
+ "missed_onset_day": {
+  "date": "2019-11-13",
+  "measured_N_out": 22.4,
+  "previous_N_out": 14.7,
+  "predicted_probability": 0.434,
+  "base_rate": 0.456,
+  "contributions": [
+   {
+    "feature": "Breach 1 back",
+    "value": 0.0,
+    "shap": -0.0562
+   },
+   {
+    "feature": "Effluent N, 1 back",
+    "value": 14.7,
+    "shap": 0.0372
+   },
+   {
+    "feature": "Influent temperature",
+    "value": 20.4,
+    "shap": -0.0216
+   },
+   {
+    "feature": "Influent N, 9 back",
+    "value": 176.0,
+    "shap": 0.0162
+   },
+   {
+    "feature": "Breach 2 back",
+    "value": 0.0,
+    "shap": -0.015
+   },
+   {
+    "feature": "Effluent N, 9 back",
+    "value": 22.3,
+    "shap": 0.0145
+   },
+   {
+    "feature": "Influent N, 8 back",
+    "value": 106.0,
+    "shap": 0.0126
+   },
+   {
+    "feature": "Flow",
+    "value": 11893.0,
+    "shap": -0.0103
+   }
+  ]
+ },
+ "lstm": {
+  "r2": 0.21,
+  "n_test": 150,
+  "horizon": 10,
+  "top_features": [
+   {
+    "feature": "Season, cosine",
+    "mean_abs_shap": 4.5754
+   },
+   {
+    "feature": "Influent pH",
+    "mean_abs_shap": 3.2247
+   },
+   {
+    "feature": "Influent temperature",
+    "mean_abs_shap": 3.0924
+   },
+   {
+    "feature": "Influent solids",
+    "mean_abs_shap": 2.9839
+   },
+   {
+    "feature": "Influent BOD5",
+    "mean_abs_shap": 2.3088
+   },
+   {
+    "feature": "Influent COD",
+    "mean_abs_shap": 1.8149
+   },
+   {
+    "feature": "Effluent BOD5, 10 measurement mean",
+    "mean_abs_shap": 1.7938
+   },
+   {
+    "feature": "Influent phosphorus",
+    "mean_abs_shap": 1.7055
+   }
+  ]
+ }
+}

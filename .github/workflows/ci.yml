@@ -52,7 +52,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install --index-url https://download.pytorch.org/whl/cpu \
                       --extra-index-url https://pypi.org/simple \
-                      -r requirements.txt
+                      -r requirements.txt -r requirements-explain.txt
 
       - name: Every number in the paper
         run: |
@@ -60,6 +60,7 @@ jobs:
           python analysis/robustness.py
           python analysis/imputation_effect.py
           python analysis/horizon_final.py
+          python analysis/explain.py
 
       - uses: actions/upload-artifact@v4
         with:
