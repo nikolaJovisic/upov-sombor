@@ -19,8 +19,12 @@ _root = next(p for p in Path(__file__).resolve().parents if (p / "data.csv").exi
 sys.path[:0] = [str(_root), str(_root / "analysis")]
 
 import json
+import os
 import numpy as np
 import pandas as pd
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score, precision_score, recall_score
@@ -32,6 +36,15 @@ L, LIMIT = 10, 15.0
 TR_END, TE_A, TE_B = "2019-02-01", "2019-04-15", "2020-03-11"
 rng = np.random.default_rng(0)
 OUT = {}
+
+FIGDIR = os.environ.get("FIGDIR", str(_root / "figures"))
+os.makedirs(FIGDIR, exist_ok=True)
+BLUE, AMBER, INK, MUTED = "#3B6FB6", "#D97706", "#1f2328", "#6B7280"
+plt.rcParams.update({"font.size": 8, "axes.labelsize": 8, "axes.titlesize": 9,
+                     "axes.edgecolor": "#c9c9c6", "axes.linewidth": 0.8,
+                     "xtick.color": MUTED, "ytick.color": MUTED, "text.color": INK,
+                     "axes.labelcolor": INK, "figure.dpi": 600, "savefig.dpi": 600,
+                     "savefig.bbox": "tight", "grid.color": "#e6e5e2", "grid.linewidth": 0.6})
 
 
 def build(horizon=0):
@@ -200,5 +213,32 @@ for h in (5, 10):
                                      xh[xh.index < TR_END],
                                      xh[(xh.index >= TE_A) & (xh.index <= TE_B)], FEATURES)
 
+# ---------------------------------------------------------------------------------
+# The operating point, drawn. This is the figure the deployment paragraph needs.
+# ---------------------------------------------------------------------------------
+grid = np.linspace(0.05, 0.60, 60)
+rec = [recall_score(yo, (po >= t).astype(int)) for t in grid]
+pre = [precision_score(yo, (po >= t).astype(int), zero_division=np.nan) for t in grid]
+fig, ax = plt.subplots(figsize=(5.4, 3.4))
+ax.plot(grid, rec, color=BLUE, lw=1.8, label="Recall, share of onset breaches caught")
+ax.plot(grid, pre, color=AMBER, lw=1.8, label="Precision, share of alarms that are real")
+ax.axhline(float(yo.mean()), color=MUTED, lw=0.9, ls=(0, (4, 3)))
+ax.text(0.585, float(yo.mean()) + 0.015, "base rate", fontsize=6.8, color=MUTED, ha="right")
+ax.axvline(0.5, color=INK, lw=0.9, ls=(0, (2, 2)))
+ax.text(0.5, 1.02, "published threshold", fontsize=6.8, color=INK, ha="center")
+ax.axvline(0.35, color=BLUE, lw=0.9, ls=(0, (2, 2)))
+ax.text(0.35, 1.02, "proposed", fontsize=6.8, color=BLUE, ha="center")
+ax.set_xlabel("Decision threshold")
+ax.set_ylabel("Share")
+ax.set_xlim(0.05, 0.60); ax.set_ylim(0, 1.08)
+ax.grid(True); ax.set_axisbelow(True)
+for sp in ("top", "right"):
+    ax.spines[sp].set_visible(False)
+ax.legend(frameon=False, fontsize=7, loc="lower left")
+ax.set_title("On days following a compliant measurement, 0.5 fires on nothing", fontsize=9)
+fig.savefig(f"{FIGDIR}/figI_onset_thresholds.png")
+plt.close(fig)
+print("wrote figI_onset_thresholds.png")
+
 json.dump(OUT, open(Path(__file__).with_name("onset_numbers.json"), "w"), indent=1)
-print("\nwrote onset_numbers.json")
+print("wrote onset_numbers.json")

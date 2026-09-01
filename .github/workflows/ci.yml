@@ -61,6 +61,7 @@ jobs:
           python analysis/imputation_effect.py
           python analysis/horizon_final.py
           python analysis/explain.py
+          python analysis/onset.py
 
       - uses: actions/upload-artifact@v4
         with:
