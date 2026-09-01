@@ -1,4 +1,7 @@
 import re
+from pathlib import Path
+
+DATA_CSV = Path(__file__).resolve().parent / "data.csv"
 
 import numpy as np
 import pandas as pd
@@ -78,7 +81,7 @@ def generate_violin_plots(df):
     # Show the plot
     plt.show()
 def load():
-    df = pd.read_csv("data.csv")
+    df = pd.read_csv(DATA_CSV)
 
     columns = []
     for column in df.columns:
@@ -118,7 +121,7 @@ def preprocess(df: pd.DataFrame, use_seq: bool):
     df.dropna(subset=FEATURE_COLUMNS, inplace=True)
     df.dropna(subset=OUTPUT_COLUMNS, inplace=True)
 
-    df = df.applymap(lambda x: format_date(x) if isinstance(x, str) else x)
+    df = df.map(lambda x: format_date(x) if isinstance(x, str) else x)
     df["Date"] = pd.to_datetime(df["Date"], format="%d.%m.%Y")
 
     if 'weekday' in SEQUENCE_CHANNELS:
@@ -127,7 +130,7 @@ def preprocess(df: pd.DataFrame, use_seq: bool):
 
     df.set_index("Date", inplace=True)
 
-    df = df.applymap(format_strings)
+    df = df.map(format_strings)
 
     df = df.loc[:, [*FEATURE_COLUMNS, OUTPUT_COLUMN]]
     df = df[~(df == 0).any(axis=1)]
