@@ -42,6 +42,8 @@ The results are lower than the ones first submitted. They are also real.
 | `analysis/horizon_final.py` | Forecast skill against horizon, for models and for both trivial baselines. Writes `horizon_numbers.json` and Figure D. |
 | `analysis/robustness.py` | The same regression refitted on two earlier train and test periods. Section 3.4. |
 | `analysis/imputation_effect.py` | What gap filling does to apparent accuracy. Section 3.7 and Figure 7. |
+| `analysis/explain.py` | SHAP for the two models proposed for deployment. Writes `shap_numbers.json` and four figures. |
+| `analysis/onset.py` | Whether the alarm can be made to fire before a breach rather than during one. Writes `onset_numbers.json`. |
 | `analysis/figures*.py` | Manuscript figures. They read the JSON files, so a figure cannot drift away from its table. |
 | `analysis/exploratory/` | The working scripts, kept for the record. Nothing published depends on them. |
 | `tests/` | The claims in the paper, asserted. Runs in CI on every push. |
@@ -66,6 +68,39 @@ python analysis/figures.py           # needs final_numbers.json and imputation_n
 ```
 
 Scripts can be run from anywhere. They find the repository root themselves.
+
+## Explaining the models
+
+`analysis/explain.py` runs SHAP on the two models the paper recommends: the random forest that
+flags effluent nitrogen above 15 mg/L, and the network that forecasts effluent BOD5 ten
+measurements ahead. It produces a summary plot for each, showing both how much a feature matters
+and which way it pushes, and two single day explanations.
+
+The two single day plots are the point. One is an alarm the model raised. The other is a day when
+nitrogen breached and the model stayed quiet, and it shows why: the largest single contribution is
+the absence of a breach at the previous measurement, which pulls the prediction down.
+
+That turned out to be general. Of the 69 breaches in the test period, 15 follow a compliant
+measurement, and at a threshold of 0.5 the model calls none of them. The highest probability it
+gives any of them is 0.43.
+
+`analysis/onset.py` asks whether that is fixable. It is, but only by moving the threshold. On those
+days the model still ranks the breaches at an area under the curve of 0.786, against 0.642 for the
+trivial alternative of how close the last measurement already was to the limit. At a threshold of
+0.35 it catches 47% of them at a precision of 0.54, against a base rate of 19%. Training a model
+specifically for those days does not beat the trivial alternative, and neither does forecasting a
+breach five or ten measurements ahead.
+
+So the model is a good monitor of a breach in progress and a weak but real predictor of a breach
+beginning, and those two jobs want different thresholds.
+
+shap does not install cleanly everywhere, so it lives in `requirements-explain.txt` rather than
+`requirements.txt`. If pip fails on your machine, use the Dockerfile:
+
+```
+docker build -t upov-sombor .
+docker run --rm -v "$PWD:/repo" upov-sombor python /repo/analysis/explain.py
+```
 
 ## Tests
 

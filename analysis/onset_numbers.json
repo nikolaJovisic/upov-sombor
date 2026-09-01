@@ -1,0 +1,115 @@
+{
+ "A_deployed_on_onset": {
+  "auc": 0.786,
+  "auc_ci": [
+   0.658,
+   0.898
+  ],
+  "proximity_baseline_auc": 0.642,
+  "n_days": 81,
+  "events": 15,
+  "base_rate_pct": 18.5,
+  "max_probability": 0.434,
+  "thresholds": [
+   {
+    "threshold": 0.5,
+    "recall": 0.0,
+    "precision": 0.0,
+    "alarms_per_100_days": 0.0
+   },
+   {
+    "threshold": 0.4,
+    "recall": 0.07,
+    "precision": 0.25,
+    "alarms_per_100_days": 4.9
+   },
+   {
+    "threshold": 0.35,
+    "recall": 0.47,
+    "precision": 0.54,
+    "alarms_per_100_days": 16.0
+   },
+   {
+    "threshold": 0.3,
+    "recall": 0.53,
+    "precision": 0.44,
+    "alarms_per_100_days": 22.2
+   },
+   {
+    "threshold": 0.25,
+    "recall": 0.67,
+    "precision": 0.37,
+    "alarms_per_100_days": 33.3
+   },
+   {
+    "threshold": 0.2,
+    "recall": 0.87,
+    "precision": 0.34,
+    "alarms_per_100_days": 46.9
+   }
+  ]
+ },
+ "B_onset_model": {
+  "selected_on": "validation period inside training",
+  "n_train": 441,
+  "n_test": 81,
+  "events": 15,
+  "rate": 18.5,
+  "model": "logistic",
+  "auc": 0.728,
+  "auc_ci": [
+   0.579,
+   0.854
+  ],
+  "baseline_auc": 0.642,
+  "beats_baseline": false,
+  "at_recall_67": {
+   "threshold": 0.297,
+   "precision": 0.29,
+   "recall": 0.73,
+   "alarms_per_100_days": 46.9
+  }
+ },
+ "C_horizon_5": {
+  "selected_on": "validation period inside training",
+  "n_train": 812,
+  "n_test": 150,
+  "events": 67,
+  "rate": 44.7,
+  "model": "gradient boosting",
+  "auc": 0.763,
+  "auc_ci": [
+   0.68,
+   0.836
+  ],
+  "baseline_auc": 0.817,
+  "beats_baseline": false,
+  "at_recall_67": {
+   "threshold": 0.333,
+   "precision": 0.66,
+   "recall": 0.67,
+   "alarms_per_100_days": 45.3
+  }
+ },
+ "C_horizon_10": {
+  "selected_on": "validation period inside training",
+  "n_train": 812,
+  "n_test": 150,
+  "events": 68,
+  "rate": 45.3,
+  "model": "gradient boosting",
+  "auc": 0.63,
+  "auc_ci": [
+   0.538,
+   0.717
+  ],
+  "baseline_auc": 0.76,
+  "beats_baseline": false,
+  "at_recall_67": {
+   "threshold": 0.207,
+   "precision": 0.49,
+   "recall": 0.68,
+   "alarms_per_100_days": 62.7
+  }
+ }
+}
